@@ -21,8 +21,14 @@ object chap2_6 {
   def partial3[A, B, C](a: A, f: (A, B) => C): B => C = (b) => f(a, b)
 
   def main(args: Array[String]): Unit = {
+    // [A, B, C](a: A, f: (A, B) => C): B => C = (b: B) => f(a, b)
+    // [A, B, C]( 3 , add: (A, B) => C): B => C = (b: B) => add (3 , b)
     val addThree = partial3(3, add)
+    // [A, B, C]( 3 , add: (A, B) => C): B => C = (b: B) => add (3 , b)
+    // [A, B, C]( 3 , add: (A, B) => C): B => C = (4) => add (3 , 4)
     val addThreeAndFour = addThree(4)
+    // add (3 , 4) => 3 + 4
+    // 결과 7
     println(addThreeAndFour)
   }
 }
