@@ -1,3 +1,5 @@
+import scala.annotation.tailrec
+
 /**
  *  sealed : 이 파일 안에서 모든 로직을 구현 해야 한다는 의미
  *  trait : 특질 표시 자료 구조를 만들기 위한 특성 키워드 : list, stack, queue, tree 다양한 자료 구조 만들기 가능
@@ -31,4 +33,39 @@ object List {
   def apply[A](as: A*): List[A] = // 가변 인수 함수 구문
     if (as.isEmpty) Nil
     else Cons(as.head, apply(as.tail: _*)) // 비어 있지 않으면 첫 요소와 나머지 요소들로 Cons 생성
+
+
+  /**
+   * 연습문제 3.2 리스트의 첫 요소를 제거하는 tail을 구현
+   */
+  def tail[A](list: List[A]): List[A] = list match {
+    case Nil => Nil // 빈 리스트 인 경우 빈 리스트 반환
+    case Cons(_,xs) => xs // 첫 요소를 제거 하고 나머지 리스트 반환
+  }
+
+  /**
+   * 연습문제 3.3 리스트의 첫 요소를 다른값으로 대체하는 함수 setHead의 구현
+   */
+  def setHead[A](list:List[A],head: A) = list match {
+    case Nil => Nil
+    case Cons(_,xs) => Cons(head,xs)
+  }
+
+  /**
+   * 연습문제 3.4
+   * tail을 일반화해서, 목록에서 처음 n개의 요소들 제거하는 함수 drop을 구현하라.
+   * 이 함수의 실행시간은 제거ㅏ되는 원소의 개수에만 비례함에 주의할 것
+   * List 전체의 복사본을 만들 필요는 없다.
+   * def drop[A](l: List[A], n:Int): List[A]
+   */
+  @tailrec
+  def drop[A](l: List[A], n: Int): List[A] = (l, n) match {
+    case (Nil,_) => Nil // 리스트가 비어 있으면 빈 리스트 반환
+    case (xs, 0) => xs // n이 0이면 리스트 그대로 반환
+    case (Cons(_,xs),n) => drop(xs, n -1) // 첫 요소를 제거하고 n을 감소시킨 후 재귀 호출
+  }
+
+
+
+
 }
