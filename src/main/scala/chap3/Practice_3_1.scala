@@ -100,12 +100,13 @@ object List {
 
   /**
    * 리스트의 모든 요소에 대해 오른쪽에서 왼쪽으로 함수 f를 적용하여 단일 값으로 축약하는 함수.
+   *
    * @param as : 다형 타입 A의 리스트
    * @param z  : 빈 목록일 경우 반환할 기본값 (초기값)
    * @param f  : 두 인수를 받아 하나의 값으로 합치는 함수. 첫 번째 인수는 리스트의 요소, 두 번째 인수는 축약된 값.
    * @tparam A : 리스트 요소의 타입
    * @tparam B : 축약된 결과의 타입
-   * @return   : 리스트의 모든 요소에 f를 적용하여 얻은 단일 값
+   * @return : 리스트의 모든 요소에 f를 적용하여 얻은 단일 값
    */
   def foldRight[A, B](as: List[A], z: B)(f: (A, B) => B): B =
     as match {
@@ -158,7 +159,6 @@ object List {
     }
 
 
-
   /**
    * 비강제 인수 : 지연평가 (재귀상에서 평가하므로 재귀중 평가)
    */
@@ -167,6 +167,7 @@ object List {
     as match {
       case Nil => z
       case Cons(x, xs) =>
+        println(s"지연 평가된 foldRight 의 x = $x")
         f(x, nonStrictFoldRight(xs, z)(f))
     }
 
@@ -178,8 +179,18 @@ object List {
         x * y
       }
     })
-  def main(args: Array[String]): Unit = {
 
+  def main(args: Array[String]): Unit = {
+    // 강제인수 실행 (즉시평가)
+    val list = List(1.0, 2.0, 0.0, 3.0, 4.0)
+    val result = productStrict(list)
+    println(s"즉시평가 결과: $result")
+
+    println("==========================================")
+
+    // 비강제인수 실행 (지연평가)
+    val result2 = productNoneStrict(list)
+    println(s"지연평가 결과: $result2")
   }
 
   /**
@@ -196,7 +207,7 @@ object List {
    * 연습문제 3.9
    * foldRight를 이용해서 목록의 길이를 계산하라
    */
-  def lenght[A](as: List[A]):Int =
+  def lenght[A](as: List[A]): Int =
     foldRight(as, 0)((_, acc) => acc + 1)
 
   /**
@@ -212,15 +223,15 @@ object List {
    * 왼쪽에서 오른쪽으로 리스트의 요소를 처리하여 누적된 값을 계산하는 함수입니다.
    *
    * @param as 처리할 리스트입니다. 이 리스트의 각 요소는 함수 f에 의해 처리됩니다.
-   * @param z 초기값입니다. 리스트의 첫 번째 요소를 처리하기 전에 이 값으로 시작합니다.
-   * @param f 누적된 값과 리스트의 현재 요소를 받아 새로운 누적 값을 반환하는 함수입니다.
+   * @param z  초기값입니다. 리스트의 첫 번째 요소를 처리하기 전에 이 값으로 시작합니다.
+   * @param f  누적된 값과 리스트의 현재 요소를 받아 새로운 누적 값을 반환하는 함수입니다.
    * @tparam A 리스트 요소의 타입입니다.
    * @tparam B 결과 값의 타입입니다.
    * @return 리스트의 모든 요소를 처리한 후 최종 누적 값을 반환합니다.
    */
-  def foldLeft[A,B](as: List[A],z: B)(f: (B, A) => B) : B = as match {
+  def foldLeft[A, B](as: List[A], z: B)(f: (B, A) => B): B = as match {
     case Nil => z
-    case Cons(h,t) => foldLeft(t,f(z,h))(f)
+    case Cons(h, t) => foldLeft(t, f(z, h))(f)
   }
 
   /**
@@ -242,7 +253,6 @@ object List {
    */
 
 
-
   /**
    * 효율성 손실의 한 예로, List가 또 다른 List를 순차열로서 담고잇는지 점검하는
    * headSubsequence 함수를 구현하라.
@@ -254,15 +264,16 @@ object List {
    * def hasSubSeqeunce[A](sup: List[A], sub: List[A]):Boolean
    */
   @annotation.tailrec
-  def startsWith[A](l: List[A], prefix: List[A]): Boolean = (l,prefix) match {
-    case (_,Nil) => true
-    case (Cons(h,t),Cons(h2,t2)) if h == h2 => startsWith(t, t2)
+  def startsWith[A](l: List[A], prefix: List[A]): Boolean = (l, prefix) match {
+    case (_, Nil) => true
+    case (Cons(h, t), Cons(h2, t2)) if h == h2 => startsWith(t, t2)
     case _ => false
   }
+
   @annotation.tailrec
   def hasSubsequence[A](sup: List[A], sub: List[A]): Boolean = sup match {
     case Nil => sub == Nil
     case _ if startsWith(sup, sub) => true
-    case Cons(h,t) => hasSubsequence(t, sub)
+    case Cons(h, t) => hasSubsequence(t, sub)
   }
 }
