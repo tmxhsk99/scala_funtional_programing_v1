@@ -40,6 +40,10 @@ case object None extends Option[Nothing] // 없는 경우
 
 object CustomOption {
 
+  def variance(xs: Seq[Double]): Option[Double] = {
+    mean(xs).flatMap(m => mean(xs.map(x => math.pow(x - m, 2))))
+  }
+
   // 시퀸스의 평균을 계산하는 mean 함수
   def mean(xs: Seq[Double]): Option[Double] =
     if (xs.isEmpty) None
