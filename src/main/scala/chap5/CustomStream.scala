@@ -70,6 +70,21 @@ sealed trait Stream[+A] {
   }
 
   /**
+   * 패턴 매칭을 통한 exists
+   */
+  def existsPatternMatch(p: A => Boolean): Boolean = this match {
+    case Cons(h,t) => p(h()) || t().existsPatternMatch(p)
+    case _ => false
+  }
+
+  /**
+   * foldRight를 사용하여 재사용성이 증가한 exists
+   */
+  def exists(p: A => Boolean): Boolean =
+    foldRight(false)((a, b) => p(a) || b)
+
+
+  /**
    * foldRight : 데이터 구조를 오른쪽에서 왼쪽으로 접는(fold) 고차 함수이다.
    */
   def foldRight[B](z: => B)(f: (A, => B) => B): B = this match {
