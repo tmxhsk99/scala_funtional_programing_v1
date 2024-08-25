@@ -121,6 +121,16 @@ object Par {
     ))
     map(sequence(pars))(_.flatten)
   }
+
+  def choiceN[A](n: Par[Int])(choices: List[Par[A]]): Par[A] =
+    es => {
+      val index = run(es)(n).get() // n을 결과가 나올때 까지 차단된다.
+      run(es)(choices(index))
+    }
+
+  def choice[A](cond: Par[Boolean])(t: Par[A], f: Par[A]): Par[A] =
+    choiceN(map(cond)(b => if (b) 0 else 1))(List(t,f))
+
   /**
    * 실행을 위한 run 함수
    */
@@ -195,6 +205,63 @@ object Par {
       val squareResult: Future[List[Int]] = run(es)(squarePar)
       println("ParMap 결과: " + squareResult.get(6, TimeUnit.SECONDS))
 
+
+      // choiceN과 choice 예제
+      println("\n=== choiceN과 choice 예제 ===")
+
+      // choiceN 사용 예시
+      val choiceNExample = {
+        // 0, 1, 2 중 하나를 무작위로 선택하는 Par[Int]
+        val n: Par[Int] = lazyUnit {
+          val random = new scala.util.Random()
+          random.nextInt(3)
+        }
+
+        // 선택 가능한 세 가지 계산
+        val choices: List[Par[String]] = List(
+          lazyUnit {
+            Thread.sleep(1000)
+            "첫 번째 선택"
+          },
+          lazyUnit {
+            Thread.sleep(1000)
+            "두 번째 선택"
+          },
+          lazyUnit {
+            Thread.sleep(1000)
+            "세 번째 선택"
+          }
+        )
+
+        choiceN(n)(choices)
+      }
+
+      println("choiceN 결과: " + run(es)(choiceNExample).get(5, TimeUnit.SECONDS))
+
+      // choice 사용 예시
+      val choiceExample = {
+        // true 또는 false를 무작위로 선택하는 Par[Boolean]
+        val cond: Par[Boolean] = lazyUnit {
+          val random = new scala.util.Random()
+          random.nextBoolean()
+        }
+
+        // 조건이 참일 때의 계산
+        val trueChoice: Par[String] = lazyUnit {
+          Thread.sleep(1000)
+          "조건이 참입니다"
+        }
+
+        // 조건이 거짓일 때의 계산
+        val falseChoice: Par[String] = lazyUnit {
+          Thread.sleep(1000)
+          "조건이 거짓입니다"
+        }
+
+        choice(cond)(trueChoice, falseChoice)
+      }
+
+      println("choice 결과: " + run(es)(choiceExample).get(5, TimeUnit.SECONDS))
 
     } finally {
       es.shutdown()
