@@ -124,7 +124,7 @@ object Par {
 
   def choiceN[A](n: Par[Int])(choices: List[Par[A]]): Par[A] =
     es => {
-      val index = run(es)(n).get() // n을 결과가 나올때 까지 차단된다.
+      val index = run(es)(n).get(timeout, TimeUnit.SECONDS) // Add appropriate timeout
       run(es)(choices(index))
     }
 
