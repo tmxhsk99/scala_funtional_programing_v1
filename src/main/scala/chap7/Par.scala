@@ -108,12 +108,18 @@ object Par {
   def sequence[A](ps: List[Par[A]]): Par[List[A]] =
     ps.foldRight[Par[List[A]]](unit(List()))((h, t) => map2(h, t)(_ :: _))
 
+  def _sortPar(parList: Par[List[Int]]): Par[List[Int]] =
+    map2( parList, unit( () ) )( (a, _) => a.sorted )
+
+  def map[A,B](pa: Par[A])(f: A => B): Par[B] =
+    map2(pa, unit(()))((a,_) => f(a))
+
+  def sortPar(parList: Par[List[Int]]) = map(parList)(_.sorted)
+
   def parMap[A, B](ps: List[A])(f: A => B): Par[List[B]] = {
     val fbs: List[Par[B]] = ps.map(asyncF(f))
     sequence(fbs)
   }
-  def map[A,B](pa: Par[A])(f: A => B): Par[B] =
-    map2(pa, unit(()))((a,_) => f(a))
 
   def parFilter[A](as: List[A])(f: A => Boolean): Par[List[A]] = {
     val pars: List[Par[List[A]]] = as.map(asyncF(a =>
