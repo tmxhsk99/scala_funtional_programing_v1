@@ -116,7 +116,7 @@ object Par {
 
   def sortPar(parList: Par[List[Int]]) = map(parList)(_.sorted)
 
-  def parMap[A, B](ps: List[A])(f: A => B): Par[List[B]] = {
+  def parMap[A, B](ps: List[A])(f: A => B): Par[List[B]] = fork {
     val fbs: List[Par[B]] = ps.map(asyncF(f))
     sequence(fbs)
   }
