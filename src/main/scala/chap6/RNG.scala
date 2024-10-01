@@ -10,6 +10,15 @@ trait RNG {
 }
 
 object RNG {
+  case class Simple(seed: Long) extends RNG{
+    override def nextInt: (Int, RNG) = {
+      val newSeed = (seed * 0x5DEECE66DL + 0xBL) & 0xFFFFFFFFFFFFL
+      val nextRNG = SimpleRNG(newSeed)
+      val n = (newSeed >>> 16).toInt
+      (n, nextRNG)
+    }
+  }
+
   /**
    * RNG.nextInt를 이용해서 0 이상. Int.MaxValue 이하의 난수 정수를 생성하는 함수를 작성하라.
    * nextInt가 Int.MinValue를 돌려주는 구석진 경우 (음이 아닌 대응수가 없다)도 확실히 처리해야한다.
@@ -125,6 +134,8 @@ object RNG {
   def nonNegativeEven: Rand[Int] =
     map(nonNegativeInt)(i => i - i % 2)
 
+  def boolean(rng: RNG): (Boolean, RNG) =
+    rng.nextInt match { case (i,rng2) => (i%2==0,rng2) }
 
   /**
    * 연습문제 6.5
