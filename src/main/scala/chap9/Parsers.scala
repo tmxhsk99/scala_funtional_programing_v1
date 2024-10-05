@@ -3,6 +3,8 @@ package chap9
 import answer.{Gen, Prop}
 import answer.Prop.forAll
 
+import scala.util.matching.Regex
+
 trait Parsers[ParseError, Parser[+_]] { self => // 이에 의해 이 Parsers 인스턴스를 지칭하는 self가 도입된다. self는 나중에 ParserOps에 쓰인다.
   /**
    * 파서의 실행 함수
@@ -31,7 +33,12 @@ trait Parsers[ParseError, Parser[+_]] { self => // 이에 의해 이 Parsers 인
    */
   def or[A](s1: Parser[A], s2: => Parser[A]): Parser[A]
 
+  implicit def regex(r: Regex): Parser[String]
+
   def flatMap[A,B](p: Parser[A])(f: A => Parser[B]): Parser[B]
+
+  // 이 파서는 먼저 하나의 숫자를 파싱한 다음, 그 숫자만큼의 'a' 문자를 파싱합니다.
+  // 예: "3aaa"는 성공적으로 파싱되지만, "3aa"나 "3aaaa"는 실패합니다.
 
   /**
    * 문자열을 자동으로 Parser[String]으로 변환합니다.
@@ -63,7 +70,8 @@ trait Parsers[ParseError, Parser[+_]] { self => // 이에 의해 이 Parsers 인
   def many[A](p:Parser[A]): Parser[List[A]] =
     map2(p,many(p))(_ :: _) or succeed(List())
 
-  def map[A,B] (a: Parser[A])(f: A => B ): Parser[B]
+  def map[A,B] (a: Parser[A])(f: A => B ): Parser[B] =
+    flatMap(a)(f andThen succeed)
 
   /**
    * p 를 한 번 적용한 후, many(p)를 적용한다.
@@ -72,7 +80,8 @@ trait Parsers[ParseError, Parser[+_]] { self => // 이에 의해 이 Parsers 인
   def manay1[A](p: Parser[A]): Parser[List[A]] =
     map2(p, many(p))((a,list) => a::list)
 
-  def product[A,B](p: Parser[A], p2: => Parser[B]): Parser[(A,B)]
+  def product[A,B](p: Parser[A], p2: => Parser[B]): Parser[(A,B)] =
+    flatMap(p)(a => map(p2)(b =>(a,b)))
 
   /**
    * product를 사용해 두 p1, p2를 순차적으로 적용한다.
@@ -80,7 +89,7 @@ trait Parsers[ParseError, Parser[+_]] { self => // 이에 의해 이 Parsers 인
    * 이 튜플에 map을 적용하여 함수 f를 호출하고, 결과적으로 C 타입 값을 얻는다.
    */
   def map2[A,B,C](p: Parser[A], p2: => Parser[B])(f: (A,B) => C): Parser[C] =
-    product(p, p2) map {f.tupled}
+    for { a <- p; b <- p2 } yield f(a,b)\
 
   /**
    * 이 클래스는 Parser에 추가 메서드를 제공합니다.
