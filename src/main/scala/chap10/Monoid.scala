@@ -110,7 +110,7 @@ object Monoid {
    * 10.5 foldMap 을 구현하라
    * f함수를 적용하고, 그 결과의 zero와 op를 이용해 왼쪽에서 오른쪽으로 접는다.
    */
-  def foldMap[A,B](as: List[A], m: Monoid[B])(f: A => B): B ={
+  def foldMap[A, B](as: List[A], m: Monoid[B])(f: A => B): B = {
     as.map(f).foldLeft(m.zero)(m.op)
   }
 
@@ -127,6 +127,7 @@ object Monoid {
   def foldLeft[A, B](as: List[A], z: B)(f: (B, A) => B): B = {
     val m = new Monoid[B => B] {
       def zero: B => B = identity
+
       def op(f: B => B, g: B => B): B => B = f compose g
     }
     foldMap(as, m)(a => b => f(b, a))(z)
@@ -138,6 +139,7 @@ object Monoid {
   def foldRight[A, B](as: List[A], z: B)(f: (A, B) => B): B = {
     val m = new Monoid[B => B] {
       def zero: B => B = identity
+
       def op(f: B => B, g: B => B): B => B = f andThen g
     }
     foldMap(as, m)(a => b => f(a, b))(z)
@@ -146,12 +148,13 @@ object Monoid {
   /**
    * 연습문제 10.7: Indexedseq에 대한 foldMap 구현
    */
-  def foldMapV[A,B](v: IndexedSeq[A], m: Monoid[B])(f: A => B): B = {
-    if (v.length <= 1) {
-      if (v.isEmpty) m.zero else f(v(0))
+  def foldMapV[A, B](v: IndexedSeq[A], m: Monoid[B])(f: A => B): B = {
+    if (v.length == 0) {
+        m.zero
+    } else if (v.length == 1) {
+      f(v(0))
     } else {
-      val mid = v.length / 2
-      val (left, right) = v.splitAt(mid)
+      val (left, right) = v.splitAt(v.length / 2)
       m.op(foldMapV(left, m)(f), foldMapV(right, m)(f))
     }
   }
@@ -163,25 +166,16 @@ object Monoid {
    * 그것을 이용해서 parFoldMap을 구현할 것.
    */
   def par[A](m: Monoid[A]): Monoid[Par[A]] = new Monoid[Par[A]] {
+    def zero: Par[A] = Par.unit(m.zero)
+
     def op(a1: Par[A], a2: Par[A]): Par[A] =
       Par.map2(a1, a2)(m.op)
-
-    def zero: Par[A] = Par.unit(m.zero)
   }
 
-  def parFoldMap[A,B](v:IndexedSeq[A], m:Monoid[B])(f: A => B): Par[B] = {
-    // 입력 시퀀스의 길이가 1 이하면, 단순히 그 원소에 f를 적용하고 Par.unit으로 감쌈
-    if(v.length <= 1){
-      Par.unit(
-        if(v.isEmpty) m.zero
-        else f(v(0))
-      )
-    } else { // 사퀴스를 반으로 나누어 parMap을 호출하고, fork
-      val (left,right) = v.splitAt(v.length / 2)
-      Par.map2(
-        Par.fork(parFoldMap(left, m)(f)),
-        Par.fork(parFoldMap(right, m)(f))
-      )(m.op)
+  def parFoldMap[A, B](v: IndexedSeq[A], m: Monoid[B])(f: A => B): Par[B] = {
+    val par_IndexedSeq_B = Par.parMap(v)(f)
+    Par.flatMap(par_IndexedSeq_B) { bs =>
+      foldMapV(bs, par(m))(b => Par.lazyUnit(b))
     }
   }
 
@@ -194,6 +188,7 @@ object Monoid {
   def ordered(ints: IndexedSeq[Int]): Boolean = {
     val orderMonoid = new Monoid[Option[(Int, Int, Boolean)]] {
       def zero: Option[(Int, Int, Boolean)] = None
+
       def op(a: Option[(Int, Int, Boolean)], b: Option[(Int, Int, Boolean)]): Option[(Int, Int, Boolean)] = (a, b) match {
         case (Some((x1, y1, o1)), Some((x2, y2, o2))) => Some((x1, y2, o1 && o2 && y1 <= x2))
         case (Some((x, y, o)), None) => Some((x, y, o))
@@ -205,4 +200,31 @@ object Monoid {
     foldMapV(ints, orderMonoid)(i => Some((i, i, true))).forall(_._3)
   }
 
+  /**
+   * 실제 모노이드 테스트 함수
+   * @param args
+   */
+  def main(args: Array[String]): Unit = {
+    /**
+     * parFoldMap
+     */
+    val numbers = (1 to 1000000).toIndexedSeq
+    val sumMonoid = new Monoid[Int] {
+      def zero = 0
+      def op(a: Int, b: Int) = a + b
+    }
+    // identity는 항등함수 편리 유틸용 항등함수
+    // 현재는 배열을 변형하지 않고 병렬 처리만 적용하기 위해 항등함수를 적용
+    // 예: 제곱의 합을 계산하려면 다음과 같이 할 수 있습니다:
+    // val parSumOfSquares: Par[Int] = parFoldMap(numbers, sumMonoid)(x => x * x)
+    val parSum: Par[Int] = parFoldMap(numbers, sumMonoid)(identity)
+
+    // 실행
+    import java.util.concurrent.Executors
+    val es = Executors.newFixedThreadPool(Runtime.getRuntime.availableProcessors)
+    val sum = Par.run(es)(parSum).get()
+    println(s"Sum: $sum")
+    es.shutdown()
+  }
 }
+

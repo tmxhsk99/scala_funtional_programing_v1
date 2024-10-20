@@ -108,6 +108,15 @@ object Par {
   def sequence[A](ps: List[Par[A]]): Par[List[A]] =
     ps.foldRight[Par[List[A]]](unit(List()))((h, t) => map2(h, t)(_ :: _))
 
+  def sequence[A](ps: IndexedSeq[Par[A]]): Par[IndexedSeq[A]] =
+    if (ps.isEmpty) unit(IndexedSeq.empty)
+    else if (ps.length == 1) map(ps.head)(a => IndexedSeq(a))
+    else {
+      val (left, right) = ps.splitAt(ps.length / 2)
+      map2(sequence(left), sequence(right))(_ ++ _)
+    }
+
+
   def _sortPar(parList: Par[List[Int]]): Par[List[Int]] =
     map2( parList, unit( () ) )( (a, _) => a.sorted )
 
@@ -121,6 +130,10 @@ object Par {
     sequence(fbs)
   }
 
+  def parMap[A, B](ps: IndexedSeq[A])(f: A => B): Par[IndexedSeq[B]] = fork {
+    val fbs: IndexedSeq[Par[B]] = ps.map(asyncF(f))
+    sequence(fbs)
+  }
   def parFilter[A](as: List[A])(f: A => Boolean): Par[List[A]] = {
     val pars: List[Par[List[A]]] = as.map(asyncF(a =>
       if (f(a)) List(a) else List()
@@ -138,6 +151,17 @@ object Par {
   def choice[A](cond: Par[Boolean])(t: Par[A], f: Par[A]): Par[A] =
     choiceN(map(cond)(b => if (b) 0 else 1))(List(t,f))
 
+  def flatMap[A,B](p: Par[A])(choices: A => Par[B]): Par[B] =
+    es => {
+      val k = run(es)(p).get
+      run(es)(choices(k))
+    }
+
+  def choiceViaFlatMap[A](p: Par[Boolean])(f: Par[A], t: Par[A]): Par[A] =
+    flatMap(p)(b => if (b) t else f)
+
+  def choiceNViaFlatMap[A](p: Par[Int])(choices: List[Par[A]]): Par[A] =
+    flatMap(p)(i => choices(i))
   /**
    * 실행을 위한 run 함수
    */
