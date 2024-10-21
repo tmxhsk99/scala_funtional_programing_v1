@@ -186,18 +186,37 @@ object Monoid {
    */
 
   def ordered(ints: IndexedSeq[Int]): Boolean = {
+    // 정렬 상태를 추적하기 위한 모노이드 정의
     val orderMonoid = new Monoid[Option[(Int, Int, Boolean)]] {
+      // 빈 시퀸스를 나타내는 초기값
       def zero: Option[(Int, Int, Boolean)] = None
 
+      // 두 부분 시퀸스의 결과를 결합하는 연산
       def op(a: Option[(Int, Int, Boolean)], b: Option[(Int, Int, Boolean)]): Option[(Int, Int, Boolean)] = (a, b) match {
-        case (Some((x1, y1, o1)), Some((x2, y2, o2))) => Some((x1, y2, o1 && o2 && y1 <= x2))
-        case (Some((x, y, o)), None) => Some((x, y, o))
-        case (None, Some((x, y, o))) => Some((x, y, o))
-        case (None, None) => None
+        case (Some((x1, y1, o1)), Some((x2, y2, o2))) =>
+          // o1,o2: 각 부분 시퀸스의 정렬 상태
+          // y1 > x2: 각 부분 시퀸스 사이의 정렬 상태 확인
+          if(!o1 || !o2 || y1 > x2) { // 정렬되지 않은 상태 발견
+            Some((x1,y2,false))
+          } else // 여전히 정렬된 상태
+            Some((x1,y2,true))
+        case (Some((x, y, o)), None) => Some((x, y, o)) // 오른쪽이 빈경우, 왼쪽 유지
+        case (None, Some((x, y, o))) => Some((x, y, o)) // 왼쪽이 빈 경우, 오른쪽 유지
+        case (None, None) => None // 둘다 빈 경우
       }
     }
 
-    foldMapV(ints, orderMonoid)(i => Some((i, i, true))).forall(_._3)
+    // foldMapV를 사용하여 전체 시퀸스에 대한 정렬 상태 확인
+    foldMapV(ints, orderMonoid)(i => Some((i, i, true))) match {
+      case Some((_,_,isOrdered)) => isOrdered // 최종 정렬 상태 반환
+      case None => true // 빈 시퀸스는 정렬된 것으로 간주
+    }
+  }
+
+  // 테스트를 위한 간단한 함수
+  def testOrdered(seq: IndexedSeq[Int]): Unit = {
+    //println(s"Sequence: ${seq.mkString(", ")}")
+    println(s"Is ordered: ${ordered(seq)}\n")
   }
 
   /**
@@ -225,6 +244,50 @@ object Monoid {
     val sum = Par.run(es)(parSum).get()
     println(s"Sum: $sum")
     es.shutdown()
+
+
+    // orderd 사용 예시
+    // 예시 1: 정렬된 시퀀스
+    testOrdered(IndexedSeq(1, 2, 3, 4, 5))
+    // 예상 출력:
+    // Sequence: 1, 2, 3, 4, 5
+    // Is ordered: true
+
+    // 예시 2: 정렬되지 않은 시퀀스
+    testOrdered(IndexedSeq(1, 3, 2, 4, 5))
+    // 예상 출력:
+    // Sequence: 1, 3, 2, 4, 5
+    // Is ordered: false
+
+    // 예시 3: 동일한 요소를 포함한 정렬된 시퀀스
+    testOrdered(IndexedSeq(1, 2, 2, 3, 4, 4, 5))
+    // 예상 출력:
+    // Sequence: 1, 2, 2, 3, 4, 4, 5
+    // Is ordered: true
+
+    // 예시 4: 단일 요소 시퀀스
+    testOrdered(IndexedSeq(42))
+    // 예상 출력:
+    // Sequence: 42
+    // Is ordered: true
+
+    // 예시 5: 빈 시퀀스
+    testOrdered(IndexedSeq())
+    // 예상 출력:
+    // Sequence:
+    // Is ordered: true
+
+    // 예시 6: 큰 정렬된 시퀀스
+    testOrdered((1 to 1000000).toIndexedSeq)
+    // 예상 출력:
+    // Sequence: 1, 2, 3, ..., 999999, 1000000
+    // Is ordered: true
+
+    // 예시 7: 큰 정렬되지 않은 시퀀스
+    testOrdered((1 to 1000000).toIndexedSeq.updated(500000, 0))
+    // 예상 출력:
+    // Sequence: 1, 2, 3, ..., 0, ..., 999999, 1000000
+    // Is ordered: false
   }
 }
 
