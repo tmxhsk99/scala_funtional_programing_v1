@@ -214,10 +214,154 @@ object Monoid {
   }
 
   /**
-   * 실제 모노이드 테스트 함수
+   * 10.4 예제: 병렬 파싱
+   * 문자열의 단어를 병렬로 처리 하기 위해
+   * 만든 자료구조 (문자열을 중간절반으로 쪼개면 단어자체가 쪼개질 수 있으므로)
+   */
+
+  /**
+   * 예시:
+   *
+   * "lorem ipsum do" → Part("lorem", 1, "do")
+   *
+   * lorem: 왼쪽 잘린 단어
+   * 1: 완전한 단어 "ipsum" 하나
+   * do: 오른쪽 잘린 단어
+   *
+   *
+   * "lor sit amet, " → Part("lor", 2, "")
+   *
+   * lor: 왼쪽 잘린 단어
+   * 2: 완전한 단어 "sit amet" 두 개
+   * "": 오른쪽 잘린 단어 없음
+   *
+   * // Stub 케이스
+   * // Stub 케이스
+   * "abc" -> Stub("abc")  // 공백이 없어서 완전한 단어인지 알 수 없음
+   * "a" -> Stub("a")      // 마찬가지로 완전한 단어가 아직 없음
+   * "" -> Stub("")        // 빈 문자열
+   *
+   * // Part 케이스 (완전한 단어가 하나라도 있을 때)
+   * "abc def" -> Part("", 1, "def")  // "abc"는 완전한 단어
+   * "abc def ghi" -> Part("", 2, "ghi")  // "abc", "def"는 완전한 단어
+   */
+  sealed trait WC
+  case class Stub(char: String) extends WC // 아직 완전한 단어가 없는 상태
+  case class Part(lStub: String, words: Int, rStub: String) extends WC// 완전한 단어들 + 잘린 단어들
+
+
+  /**
+   * 연습문제 10.10
+   * WC를 위한 모노이드 인스턴스를 작성하고, 그것이 모노이드 법칙을 지키는 지 확인하라
+   */
+  val wcMonoid:Monoid[WC] = new Monoid[WC] {
+    // 항등원 - 빈 문자열을 가진 Stub
+    def zero:WC = Stub("")
+
+    def op (a: WC, b:WC): WC = (a, b) match {
+      // 1. Stub + Stub = 두 문자열을 연결한 새 Stub
+      case (Stub(c1), Stub(c2)) => Stub(c1 + c2)
+
+      // 2. Stub + Part = 왼쪽 Stub와 Part를 결합
+      case (Stub(c), Part(l,w,r)) => Part(c + 1, w, r)
+
+      // 3. Part + Stub = Part와 오른쪽 Stub를 결합
+      case (Part(l,w,r ), Stub(c)) => Part(l, w, r + c)
+
+      // 4. Part + Part = 가장 복잡한 케이스
+      case (Part(l1, w1, r1), Part(l2,w2,r2)) =>
+        // r1과 l2가 합쳐져서 완전한 단어가 되는지 확인
+      val words =
+        if((r1 + l2).isEmpty) w1 + w2 // 사이에 단어가 없음
+        else w1 + w2 + 1 // r1 + l2가 하나의 완전한 단어가 됨
+
+      Part(l1, words, r2)
+    }
+  }
+
+  /**
+   * Part + Part에 대한 자세한 설명(이해가 안감여~~)
+   */
+  /**
+   * 이 코드는 두 개의 Part를 합칠 때의 로직입니다. 예시로 설명하겠습니다:
+   *
+   * 1. 가장 단순한 경우 (사이에 단어가 없는 경우):
+   * ```scala
+   * // "hello world" 처리 중일 때
+   * Part("", 1, "") + Part("", 0, "word")
+   * // l1="", w1=1 (hello가 카운트됨), r1=""
+   * // l2="", w2=0, r2="word"
+   * // r1 + l2 = "" + "" = "" (비어있음)
+   * => Part("", 1, "word")  // words = w1 + w2 = 1 + 0 = 1
+   * ```
+   *
+   * 2. 잘린 단어가 합쳐지는 경우:
+   * ```scala
+   * // "lorem ipsum do" + "lor sit amet"
+   * Part("lorem", 1, "do") + Part("lor", 2, "")
+   * // l1="lorem", w1=1 (ipsum), r1="do"
+   * // l2="lor", w2=2 (sit, amet), r2=""
+   * // r1 + l2 = "do" + "lor" = "dolor" (완전한 단어가 됨!)
+   * => Part("lorem", 4, "")  // words = w1 + w2 + 1 = 1 + 2 + 1 = 4
+   * // "lorem", "ipsum", "dolor", "sit", "amet" 총 4단어
+   * ```
+   *
+   * 3. 더 복잡한 예시:
+   * ```scala
+   * // "my na" + "me is" + "bob"
+   * // 첫 번째 병합
+   * Part("", 1, "na") + Part("me", 1, "")  // "is"가 카운트됨
+   * // r1="na" + l2="me" = "name" (새로운 단어!)
+   * => Part("", 3, "")  // "my" + "is" + "name" = 3단어
+   *
+   * // 두 번째 병합
+   * Part("", 3, "") + Part("", 0, "bob")
+   * => Part("", 3, "bob")  // 아직 "bob"은 완전한 단어가 아님
+   * ```
+   *
+   * 핵심 포인트:
+   * 1. r1과 l2가 합쳐져서 새로운 단어가 될 수 있음
+   * 2. 그래서 단순히 w1 + w2만 하면 안 되고
+   * 3. r1 + l2가 비어있지 않으면 추가로 +1을 해줘야 함 (새로운 단어가 생겼으므로)
+   *
+   * 이 로직이 있어야 문자열을 어디서 나누든 정확한 단어 수를 셀 수 있다!
+   */
+
+  /**
+   * WC 모노이드를 이용해서 String의 단어를 세는 함수를 구현하라.
+   * 구현은 주어진 문자열을 부분 문자열들로 분할하고 각 부분 문자열의 단어 개수를 세는 과정을 재귀적으로 반복해서 전체 단어 개수를 구해야한다.
+   */
+  def wordCount(s: String): Int  = {
+    // 한 문자를 WC로 변환하는 함수
+    def toWC(c: Char): WC = {
+      if(c.isWhitespace) Part("",0,"") // 문자열 끝에도 적용
+      else Stub(c.toString)
+    }
+
+    // 문자열을 WC로 변환하고 모노이드 연산으로 결합
+    // unstub 함수로 남은 문자열이 문자열인지 아닌지 판단
+    def unstub(s: String ) = s.length match {
+      case 0 => 0 // 빈문자열이면 단어 아님
+      case _ => 1 // 문자가 있으면 하나의 단어로 카운트
+    }
+
+    val result = s.foldLeft(wcMonoid.zero)((acc, c) =>
+      wcMonoid.op(acc, toWC(c))
+    )
+
+    // 최종 결과 처리
+    result match {
+      case Stub(s) => unstub(s) // 문자열 끝에 Stub이 남은 경우
+      case Part(l,w,r) => w + unstub(l) + unstub(r) // 문자열 끝에 Part가 남은 경우
+    }
+  }
+
+  /**
+   * 실제 모노이드 테스트 함수 시작
    * @param args
    */
   def main(args: Array[String]): Unit = {
+
     /**
      * parFoldMap
      */
@@ -282,6 +426,11 @@ object Monoid {
     // 예상 출력:
     // Sequence: 1, 2, 3, ..., 0, ..., 999999, 1000000
     // Is ordered: false
+
+
+    // wcMonoid 사용예시
+    val wordCountResult = wordCount("lorem ipsum dolor") // 결과: 3
+    println(s"Is wordCountResult: ${wordCountResult}\n")
   }
 }
 
