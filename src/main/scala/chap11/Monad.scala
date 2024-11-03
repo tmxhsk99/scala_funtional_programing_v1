@@ -1,6 +1,8 @@
 package chap11
 
 import answer.Gen
+import answer.Prop.S
+import chap6.State
 import chap7.Par
 import chap7.Par.Par
 
@@ -87,6 +89,25 @@ object Monad {
     def unit[A](a: => A) = List.apply(a)
 
     override def flatMap[A, B](ma: scala.List[A])(f: A => scala.List[B]): scala.List[B] = ma flatMap f
+  }
+
+  // 연습문제 11.2
+
+  class StateMonads[S] {
+    type StateS[A] = State[S, A]
+
+    val monad = new Monad[StateS] {
+      def unit[A](a: => A): State[S, A] = State(s => (a, s))
+      override def flatMap[A,B](st: State[S, A])(f: A => State[S, B]): State[S, B] =
+        st flatMap f
+    }
+  }
+
+  def stateMonad[S] = new Monad[({type lambda[x] = State[S,x]})#lambda] {
+    def unit[A](a: => A): State[S,A] = State(s => (a, s))
+
+    def flatMap[A,B](ma: State[S,A])
+                    (f: A => State[S,B]): State[S,B] = ma flatMap f
   }
 }
 
