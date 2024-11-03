@@ -39,6 +39,34 @@ trait Monad[F[_]] extends Functor[F] {
 
   def map2[A, B, C](ma: F[A], mb: F[B])(f: (A, B) => C): F[C] =
     flatMap(ma)(a => map(mb)(b => f(a, b)))
+
+  /**
+   * 리스트 안의 모나드들을 하나의 모나드로 합치기
+   * // List[Option[A]] -> Option[List[A]]
+   * val inputs = List(Some(1), Some(2), Some(3))
+   * sequence(inputs) // 결과: Some(List(1, 2, 3))
+   */
+  def sequence[A](lma: List[F[A]]): F[List[A]] =
+    lma.foldRight(unit(List[A]()))((ma, mla) => map2(ma, mla)(_ :: _))
+
+  /**
+   * 리스트의 각 요소에 모나드를 반환하는 함수를 적용하고 결과를 하나로 합치기
+   * // List[A]와 A => Option[B]를 받아서 Option[List[B]] 반환
+   * def divide10(x: Int): Option[Double] =
+   * if (x == 0) None
+   * else Some(10.0 / x)
+   *
+   * traverse(List(2, 5, 10))(divide10)
+   * // 결과: Some(List(5.0, 2.0, 1.0))
+   *
+   * traverse(List(2, 0, 10))(divide10)
+   * // 결과: None (0으로 나누기 시도)
+   */
+  def traverse[A,B](la: List[A])(f: A => F[B]): F[List[B]] =
+    la.foldRight(unit(List[B]()))((a,mlb) => map2(f(a), mlb)(_ :: _))
+
+
+
 }
 
 
