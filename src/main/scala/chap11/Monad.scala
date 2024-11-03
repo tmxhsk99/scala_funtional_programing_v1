@@ -73,10 +73,11 @@ object Monad {
 
   /**
    * Stream 모나드
+   * Stream은 scala 버전 2.13 버전 부터는 Deprecated 되고 LazyList 사용 권장 으로 변경됨
    */
-  val streamMonad = new Monad[Stream] {
-    def unit[A](a: => A) = Stream(a)
-    override def flatMap[A, B](ma: Stream[A])(f: A => Stream[B]): Stream[B] = ma flatMap f
+  val streamMonad = new Monad[LazyList] {
+    def unit[A](a: => A) = LazyList(a)
+    override def flatMap[A, B](ma: LazyList[A])(f: A => LazyList[B]): LazyList[B] = ma flatMap f
   }
 
   /**
