@@ -62,10 +62,19 @@ trait Monad[F[_]] extends Functor[F] {
    * traverse(List(2, 0, 10))(divide10)
    * // 결과: None (0으로 나누기 시도)
    */
-  def traverse[A,B](la: List[A])(f: A => F[B]): F[List[B]] =
-    la.foldRight(unit(List[B]()))((a,mlb) => map2(f(a), mlb)(_ :: _))
+  def traverse[A, B](la: List[A])(f: A => F[B]): F[List[B]] =
+    la.foldRight(unit(List[B]()))((a, mlb) => map2(f(a), mlb)(_ :: _))
 
 
+  /**
+   * replicateM : 모나드 F 안서 어떤 동작(ma)를 n번 반복하여 그 결과들의 리스트를 만드는 함수
+   * 입력으로 반복 횟수 n과 모나드 값 ma를 받아서, 그 모나드 동작을 n번 수행한 결과들을 리스트로 모아 반환한다.
+   */
+  def replicatedM[A](n: Int, ma: F[A]): F[List[A]] =
+    if (n <= 0)
+      unit(List()) // 빈리스트를 모나드로 감싸서 반환
+    else
+      map2(ma, replicatedM(n - 1, ma))(_ :: _) // 현재 값과 나머지 재귀 결과를 합칩
 
 }
 
@@ -107,6 +116,7 @@ object Monad {
    */
   val streamMonad = new Monad[LazyList] {
     def unit[A](a: => A) = LazyList(a)
+
     override def flatMap[A, B](ma: LazyList[A])(f: A => LazyList[B]): LazyList[B] = ma flatMap f
   }
 
@@ -126,16 +136,17 @@ object Monad {
 
     val monad = new Monad[StateS] {
       def unit[A](a: => A): State[S, A] = State(s => (a, s))
-      override def flatMap[A,B](st: State[S, A])(f: A => State[S, B]): State[S, B] =
+
+      override def flatMap[A, B](st: State[S, A])(f: A => State[S, B]): State[S, B] =
         st flatMap f
     }
   }
 
-  def stateMonad[S] = new Monad[({type lambda[x] = State[S,x]})#lambda] {
-    def unit[A](a: => A): State[S,A] = State(s => (a, s))
+  def stateMonad[S] = new Monad[({type lambda[x] = State[S, x]})#lambda] {
+    def unit[A](a: => A): State[S, A] = State(s => (a, s))
 
-    def flatMap[A,B](ma: State[S,A])
-                    (f: A => State[S,B]): State[S,B] = ma flatMap f
+    def flatMap[A, B](ma: State[S, A])
+                     (f: A => State[S, B]): State[S, B] = ma flatMap f
   }
 }
 
