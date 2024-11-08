@@ -76,6 +76,14 @@ trait Monad[F[_]] extends Functor[F] {
     else
       map2(ma, replicatedM(n - 1, ma))(_ :: _) // 현재 값과 나머지 재귀 결과를 합칩
 
+  // 연습문제 11.7
+  def compose[A,B,C](f: A => F[B], g: B => F[C]): A => F[C] =
+    a =>flatMap(f(a))(g)
+
+  // 연습문제 11.8
+  // 어려움: flatMap을 compose를 이용해서 구현하라. 이 구현이 가능하므로, compose와 unit은 모나드 조합기들의 또다른 최소 집합이다.
+  def _flatMap[A,B](ma: F[A])(f: A => F[B]): F[B] =
+    compose((_:Unit) => ma, f)(())
 }
 
 
