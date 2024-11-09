@@ -156,6 +156,17 @@ object Monad {
     def flatMap[A, B](ma: State[S, A])
                      (f: A => State[S, B]): State[S, B] = ma flatMap f
   }
+
+  val idMonoid = new Monad[Id]{
+    def unit [A](a: => A) = Id(a)
+    override def flatMap[A,B](ida: Id[A])(f: A => Id[B]): Id[B] = ida flatMap f
+  }
+}
+
+
+case class Id[A](value: A) {
+  def map[B](f: A => B): Id[B] = Id(f(value))
+  def flatMap[B](f: A => Id[B]): Id[B] = f(value)
 }
 
 
