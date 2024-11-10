@@ -161,6 +161,8 @@ object Monad {
     def unit [A](a: => A) = Id(a)
     override def flatMap[A,B](ida: Id[A])(f: A => Id[B]): Id[B] = ida flatMap f
   }
+
+
 }
 
 
@@ -170,6 +172,62 @@ case class Id[A](value: A) {
 }
 
 
+case class Reader [R,A](run: R => A) {
+  def map[B](f: A => B): Reader[R, B] =
+    Reader(r => f(run(r)))
+
+  def flatMap[B](f: A => Reader[R, B]): Reader[R, B] =
+    Reader(r => f(run(r)).run(r))
+}
+/**
+ * Reader 모나드는 환경(R)로 부터 값(A)를 읽어오는 계산을 표현한다.
+ */
+object Reader {
+
+  def readerMonad[R] = new Monad[({type f[x] = Reader[R,x]})#f] {
+    // 상수 값을 Reader로 감싸기
+    def unit[A](a: => A): Reader[R,A] = Reader(_ => a)
+
+    // Reader 변환을 연결
+    override def flatMap[A,B](ra: Reader[R, A])(f: A => Reader[R,B]): Reader[R,B] =
+      Reader(r => f(ra.run(r)).run(r))
+  }
+
+  // 기본 수단 연산
+  def ask[R]: Reader[R,R] = Reader(r => r)  // 환경을 그대로 반환
+  def local[R,A](f: R => R)(ra: Reader[R,A]): Reader[R,A] =
+    Reader(r => ra.run(f(r)))  // 환경을 변환
+}
+
+// Reader 예시
+
+case class Config(
+     dbUrl: String,
+     apiKey: String,
+     timeout:Int
+)
+
+object Main extends App{
+  import Reader.readerMonad
+  val configReader = readerMonad[Config]
+  import configReader._
 
 
+  val validateConnection = for {
+    url <- Reader[Config,String](_.dbUrl)
+    key <- Reader[Config,String](_.apiKey)
+    timeout <- Reader[Config,Int](_.timeout)
+  }yield {
+    (url.nonEmpty, key.nonEmpty, timeout > 0) match {
+      case (true,true,true) => "Valid config"
+      case _ => "Invalid config"
+    }
+  }
 
+  // 실행
+  val config1 = Config("localhost:5432", "secret123", 1000)
+  val config2 = Config("", "", 0)
+
+  println(validateConnection.run(config1))  // Valid config
+  println(validateConnection.run(config2))  // Invalid config
+}
