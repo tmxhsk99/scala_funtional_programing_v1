@@ -67,7 +67,7 @@ trait Monad[F[_]] extends Functor[F] {
 
 
   /**
-   * replicateM : 모나드 F 안서 어떤 동작(ma)를 n번 반복하여 그 결과들의 리스트를 만드는 함수
+   * replicateM : 모나드 F 안에서 어떤 동작(ma)를 n번 반복하여 그 결과들의 리스트를 만드는 함수
    * 입력으로 반복 횟수 n과 모나드 값 ma를 받아서, 그 모나드 동작을 n번 수행한 결과들을 리스트로 모아 반환한다.
    */
   def replicatedM[A](n: Int, ma: F[A]): F[List[A]] =
