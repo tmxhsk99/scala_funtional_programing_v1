@@ -51,8 +51,8 @@ object BetterIO {
      */
     val g: Int => TailRec[Int] =
       List.fill(10000)(f).foldLeft(f){ // f 함수를 10000개 만들고
-        (a: Function1[Int, TailRec[Int]],
-         b: Function1[Int, TailRec[Int]]) => {
+        (a: (Int) => TailRec[Int],
+         b: (Int) => TailRec[Int]) => {
           (x: Int) => TailRec.suspend(a(x).flatMap(b))
         }
       }
