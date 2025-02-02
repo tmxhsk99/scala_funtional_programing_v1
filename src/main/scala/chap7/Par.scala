@@ -166,7 +166,11 @@ object Par {
    * 실행을 위한 run 함수
    */
   def run[A](es: ExecutorService)(p: Par[A]): Future[A] = p(es)
-
+  def delay[A](timeMillis: Long)(a: => A): Par[A] =
+    lazyUnit {
+      Thread.sleep(timeMillis)
+      a
+    }
   def main(args: Array[String]): Unit = {
     // 병렬 계산을 위한 ExecutorService
     val es: ExecutorService = Executors.newFixedThreadPool(4)
