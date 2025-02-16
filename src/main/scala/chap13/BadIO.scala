@@ -1,3 +1,5 @@
+import org.checkerframework.checker.units.qual.A
+
 import scala.annotation.tailrec
 
 sealed trait IO[A] { self =>
@@ -13,6 +15,8 @@ sealed trait IO[A] { self =>
 }
 
 object IO {
+  def apply(value: Any): IO[A] = ???
+
   def unit[A](a: => A): IO[A] = new IO[A] {
     def run = a
   }

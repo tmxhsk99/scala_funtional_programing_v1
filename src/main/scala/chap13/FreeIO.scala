@@ -26,7 +26,7 @@ object FreeIO {
   case class FlatMap[F[_],A,B](s: Free[F, A],
                                f: A => Free[F, B]) extends Free[F, B] // 연속된 계산을 표현하는 케이스
 
-  // Exercise 1: Implement the free monad
+
   def freeMonad[F[_]]: Monad[({type f[a] = Free[F,a]})#f] =
     new Monad[({type f[a] = Free[F,a]})#f] {
       def unit[A](a: => A) = Return(a)
